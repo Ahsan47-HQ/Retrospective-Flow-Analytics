@@ -1,0 +1,28 @@
+# DeepFlow RFA Config
+project_name: "RFA-DeepFlow"
+experiment_name: "initial-cnn-training"
+
+data:
+  csv_path: "/home/w-ok-e/Documents/MANAS/WSU/AllCombined_MentalEffortFocus.csv"
+  window_size: 30  # Window size in seconds (samples at 1Hz)
+  step_size: 1    # Sliding window step
+  sensor_cols: ["ACCx", "ACCy", "ACCz", "Movement", "EDAz", "TEMPz", "HRz"]
+  metadata_cols: ["DifficultyLevel", "Age"]
+  categorical_cols: ["Gender", "Puzzle"]
+  target_col: "FocusLevel"
+  subject_col: "Person"
+
+model:
+  num_filters: 32
+  kernel_size: 3
+  dropout_rate_cnn: 0.1
+  dropout_rate_dense: 0.5
+  dense_units: 32
+  num_classes: 3
+
+training:
+  lr: 0.001
+  batch_size: 64
+  epochs: 10
+  device: "cuda"  # or "cpu"
+  loso: true      # Leave-One-Subject-Out cross-validation
