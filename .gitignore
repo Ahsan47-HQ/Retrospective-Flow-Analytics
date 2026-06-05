@@ -1,0 +1,29 @@
+# Virtual Environment
+cogflow/
+venv/
+.venv/
+
+# Dataset
+data/
+
+# Python Cache
+models/__pycache__/
+__pycache__/
+*.pyc
+*.pyo
+
+# Jupyter Cache
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/
+
+# Environment Variables
+.env
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Keras files
+saved_models/
