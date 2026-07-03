@@ -36,6 +36,8 @@ def main(config_path):
     print(f"Mean Accuracy: {res_df['accuracy'].mean():.4f}")
     print(f"Mean F1 Score: {res_df['f1'].mean():.4f}")
     print("="*30)
+    res_df.to_csv('results-sample-window-5.csv', index=False)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -7,7 +7,7 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 class RFADataset(Dataset):
     def __init__(self, windows, metadata, targets):
         self.windows = torch.FloatTensor(windows)
-        self.metadata = torch.FloatTensor(metadata)
+        self.metadata = torch.FloatTensor(metadata.astype(np.float32))
         self.targets = torch.LongTensor(targets)
 
     def __len__(self):
