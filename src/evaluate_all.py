@@ -1,199 +1,79 @@
 import os
-import csv
-
-import numpy as np
-import tensorflow as tf
-
+import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from sklearn.metrics import (
-    accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    confusion_matrix
-)
 
+RESULTS_DIR = "../results"
+METRICS_CSV = os.path.join(RESULTS_DIR, "loso_metrics.csv")
+SUMMARY_CSV = os.path.join(RESULTS_DIR, "loso_summary.csv")
 
+METRIC_COLS = ["Accuracy", "Precision", "Recall", "F1", "ROC_AUC"]
 
-os.makedirs(
-    "../results",
-    exist_ok=True
-)
 
+def load_metrics():
+    if not os.path.exists(METRICS_CSV):
+        raise FileNotFoundError(
+            f"{METRICS_CSV} not found. Run train_all.py first."
+        )
+    return pd.read_csv(METRICS_CSV)
 
 
-X_test = np.load(
-    "../data/processed/X_test.npy"
-)
+def summarize(df):
+    agg = df.groupby("Model")[METRIC_COLS].agg(["mean", "std"])
 
-y_test = np.load(
-    "../data/processed/y_test.npy"
-)
+    # Flatten multi-index columns: ("Accuracy", "mean") -> "Accuracy_mean"
+    agg.columns = [f"{metric}_{stat}" for metric, stat in agg.columns]
+    agg = agg.reset_index()
 
+    return agg
 
 
-models = [
+def print_summary(summary_df):
+    print("\n" + "=" * 70)
+    print("LOSO Cross-Validation Summary")
+    print("=" * 70)
 
-    "lstm",
+    for _, row in summary_df.iterrows():
+        print(f"\nModel: {row['Model']}")
+        for metric in METRIC_COLS:
+            mean = row[f"{metric}_mean"]
+            std = row[f"{metric}_std"]
+            print(f"  {metric:<10}: {mean:.4f} ± {std:.4f}")
 
-    "gru",
 
-    "cnn_lstm",
+def plot_metrics(df):
+    for metric in ["Accuracy", "F1", "ROC_AUC"]:
+        fig, ax = plt.subplots(figsize=(8, 5))
 
-    "attention"
+        df.boxplot(column=metric, by="Model", ax=ax)
 
-]
+        ax.set_title(f"{metric} across LOSO folds by model")
+        ax.set_xlabel("Model")
+        ax.set_ylabel(metric)
+        plt.suptitle("")
 
+        out_path = os.path.join(RESULTS_DIR, f"{metric.lower()}_boxplot.png")
+        fig.tight_layout()
+        fig.savefig(out_path, dpi=150)
+        plt.close(fig)
 
+        print(f"Saved plot: {out_path}")
 
-results = []
 
+def main():
+    os.makedirs(RESULTS_DIR, exist_ok=True)
 
+    df = load_metrics()
+    summary_df = summarize(df)
 
-for name in models:
+    summary_df.to_csv(SUMMARY_CSV, index=False)
+    print(f"Saved summary to {SUMMARY_CSV}")
 
+    print_summary(summary_df)
+    plot_metrics(df)
 
-    print(
-        "Evaluating:",
-        name
-    )
 
-
-    model = tf.keras.models.load_model(
-
-        f"../saved_models/{name}.keras"
-
-    )
-
-
-
-    probs = model.predict(
-        X_test
-    )
-
-
-    preds = np.argmax(
-        probs,
-        axis=1
-    )
-
-
-
-    acc = accuracy_score(
-        y_test,
-        preds
-    )
-
-    precision = precision_score(
-        y_test,
-        preds
-    )
-
-    recall = recall_score(
-        y_test,
-        preds
-    )
-
-    f1 = f1_score(
-        y_test,
-        preds
-    )
-
-
-
-    results.append(
-        [
-            name,
-            acc,
-            precision,
-            recall,
-            f1
-        ]
-    )
-
-
-
-    # confusion matrix
-
-    cm = confusion_matrix(
-        y_test,
-        preds
-    )
-
-
-    plt.figure(
-        figsize=(5,4)
-    )
-
-    plt.imshow(cm)
-
-    plt.title(
-        name
-    )
-
-
-    for i in range(cm.shape[0]):
-
-        for j in range(cm.shape[1]):
-
-            plt.text(
-                j,
-                i,
-                cm[i,j],
-                ha="center",
-                va="center"
-            )
-
-
-    plt.xlabel(
-        "Predicted"
-    )
-
-    plt.ylabel(
-        "Actual"
-    )
-
-
-    plt.savefig(
-        f"../results/{name}_confusion.png"
-    )
-
-
-    plt.close()
-
-
-
-# save csv
-
-
-with open(
-    "../results/metrics.csv",
-    "w",
-    newline=""
-) as f:
-
-
-    writer = csv.writer(f)
-
-
-    writer.writerow(
-
-        [
-            "Model",
-            "Accuracy",
-            "Precision",
-            "Recall",
-            "F1"
-        ]
-
-    )
-
-
-    writer.writerows(
-        results
-    )
-
-
-
-print("\nSaved results!")
+if __name__ == "__main__":
+    main()

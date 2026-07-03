@@ -1,15 +1,20 @@
-import os
-import numpy as np
 import pandas as pd
+import numpy as np
 
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
 
+
+# --------------------------------------------------
+# Load
+# --------------------------------------------------
 
 def load_data(path):
     return pd.read_csv(path)
 
 
+# --------------------------------------------------
+# Clean
+# --------------------------------------------------
 
 def clean_data(df):
 
@@ -20,6 +25,9 @@ def clean_data(df):
     return df
 
 
+# --------------------------------------------------
+# Encode categorical variables
+# --------------------------------------------------
 
 def encode_features(df):
 
@@ -27,147 +35,89 @@ def encode_features(df):
 
     encoders = {}
 
-    categorical_cols = df.select_dtypes(
-        include=["object"]
-    ).columns
-
+    categorical_cols = df.select_dtypes(include=["object"]).columns
 
     for col in categorical_cols:
 
+        # Keep Person as string
         if col == "Person":
             continue
 
-
         encoder = LabelEncoder()
 
-        df[col] = encoder.fit_transform(
-            df[col]
-        )
+        df[col] = encoder.fit_transform(df[col])
 
         encoders[col] = encoder
-
 
     return df, encoders
 
 
-
-def scale_features(df, feature_cols):
-
-    df = df.copy()
-
-    scaler = StandardScaler()
-
-    df[feature_cols] = scaler.fit_transform(
-        df[feature_cols]
-    )
-
-    return df, scaler
-
-
+# --------------------------------------------------
+# Sliding windows
+# --------------------------------------------------
 
 def create_sequences(
     df,
     feature_cols,
     target,
-    window_size=30
+    window_size=30,
+    stride=5
 ):
 
-    X_seq = []
-    y_seq = []
+    X = []
+    y = []
+    person_ids = []
 
+    for person, group in df.groupby("Person",sort=False):
 
-    for person, group in df.groupby("Person"):
+        group = group.sort_index().reset_index(drop=True)
 
-        group = group.reset_index(drop=True)
+        features = group[feature_cols].values
 
+        labels = group[target].values
 
-        X = group[feature_cols].values
-
-        y = group[target].values
-
-
-        # non overlapping windows
-        for i in range(
+        for start in range(
             0,
-            len(group)-window_size,
-            window_size
+            len(group) - window_size + 1,
+            stride
         ):
 
-            X_seq.append(
-                X[i:i+window_size]
+            end = start + window_size
+
+            X.append(
+                features[start:end]
             )
 
-
-            # label of current window
-            y_seq.append(
-                y[i+window_size-1]
+            # label = last timestep
+            y.append(
+                labels[end - 1]
             )
 
+            person_ids.append(person)
 
     return (
-        np.array(X_seq),
-        np.array(y_seq)
+        np.array(X, dtype=np.float32),
+        np.array(y),
+        np.array(person_ids)
     )
 
 
-
-
-def split_data(X, y):
-
-    X_train, X_temp, y_train, y_temp = train_test_split(
-
-        X,
-        y,
-
-        test_size=0.3,
-
-        random_state=42,
-
-        stratify=y
-    )
-
-
-
-    X_val, X_test, y_val, y_test = train_test_split(
-
-        X_temp,
-        y_temp,
-
-        test_size=0.5,
-
-        random_state=42,
-
-        stratify=y_temp
-    )
-
-
-    return (
-        X_train,
-        X_val,
-        X_test,
-        y_train,
-        y_val,
-        y_test
-    )
-
-
-
+# --------------------------------------------------
+# Main pipeline
+# --------------------------------------------------
 
 def preprocessing_pipeline(
     path,
     target="Correct",
-    window_size=30
+    window_size=30,
+    stride=5
 ):
 
     df = load_data(path)
 
-
     df = clean_data(df)
 
-
     df, encoders = encode_features(df)
-
-
 
     remove_cols = [
 
@@ -178,36 +128,26 @@ def preprocessing_pipeline(
         # leakage
         "FocusLevel",
         "Focus01",
-
+        
+        # Nominal variable
         "Puzzle",
-        "DifficultyLevel"
 
     ]
-
 
     feature_cols = [
 
-        col for col in df.columns
+        c for c in df.columns
 
-        if col not in remove_cols
+        if c not in remove_cols
 
     ]
 
+    print("\nFeatures Used:")
 
+    for f in feature_cols:
+        print(f)
 
-    print("Features used:")
-    print(feature_cols)
-
-
-
-    df, scaler = scale_features(
-        df,
-        feature_cols
-    )
-
-
-
-    X, y = create_sequences(
+    X, y, person_ids = create_sequences(
 
         df,
 
@@ -215,60 +155,65 @@ def preprocessing_pipeline(
 
         target,
 
-        window_size
+        window_size,
+
+        stride
+
+    )
+
+    print("\nDataset Summary")
+
+    print("-------------------------")
+
+    print("Sequences :", len(X))
+
+    print("Window    :", window_size)
+
+    print("Stride    :", stride)
+
+    print("Shape      :", X.shape)
+
+    print("Labels     :", np.bincount(y))
+
+    print("Participants :", np.unique(person_ids))
+
+    return (
+
+        X,
+
+        y,
+
+        person_ids,
+
+        feature_cols,
+
+        encoders
 
     )
 
 
-    return (*split_data(X,y), scaler, encoders)
-
-
-
-
+# --------------------------------------------------
+# Test
+# --------------------------------------------------
 
 if __name__ == "__main__":
 
+    X, y, persons, features, _ = preprocessing_pipeline(
 
-    (
-        X_train,
-        X_val,
-        X_test,
+        "../data/raw/AllCombined_MentalEffortFocus.csv",
 
-        y_train,
-        y_val,
-        y_test,
+        target="Correct",
 
-        _,
-        _
+        window_size=30,
 
-    ) = preprocessing_pipeline(
-
-        "../data/raw/AllCombined_MentalEffortFocus.csv"
+        stride=5
 
     )
 
+    print()
 
+    print(X.shape)
 
-    os.makedirs(
-        "../data/processed",
-        exist_ok=True
-    )
+    print(y.shape)
 
-
-
-    np.save("../data/processed/X_train.npy", X_train)
-    np.save("../data/processed/X_val.npy", X_val)
-    np.save("../data/processed/X_test.npy", X_test)
-
-
-    np.save("../data/processed/y_train.npy", y_train)
-    np.save("../data/processed/y_val.npy", y_val)
-    np.save("../data/processed/y_test.npy", y_test)
-
-
-
-    print("\nDONE")
-
-    print(X_train.shape)
-    print(X_val.shape)
-    print(X_test.shape)
+    print(persons.shape)
