@@ -17,10 +17,9 @@ def build_cnn_lstm(
 
     model = Sequential([
 
-
         Conv1D(
 
-            filters=32,
+            filters=64,
 
             kernel_size=3,
 
@@ -30,33 +29,32 @@ def build_cnn_lstm(
 
         ),
 
-
-
         MaxPooling1D(
             pool_size=2
         ),
 
+        LSTM(
+            32,
+            return_sequences=True
+        ),
 
+        Dropout(
+            0.35
+        ),
 
         LSTM(
             32
         ),
 
-
-
         Dropout(
-            0.4
+            0.25
         ),
-
-
 
         Dense(
             16,
 
             activation="relu"
         ),
-
-
 
         Dense(
             num_classes,

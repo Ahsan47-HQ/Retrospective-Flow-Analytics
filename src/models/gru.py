@@ -14,15 +14,24 @@ def build_gru(
     model = Sequential([
 
         GRU(
-            32,
-            input_shape=input_shape
+            64,
+            input_shape=input_shape,
+            return_sequences=True
         ),
 
 
         Dropout(
-            0.4
+            0.3
         ),
 
+        GRU(
+            32
+        ),
+
+
+        Dropout(
+            0.3
+        ),
 
         Dense(
             16,

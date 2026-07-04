@@ -26,43 +26,35 @@ def build_attention_lstm(
 
 
     x = LSTM(
-
-        32,
-
+        64,
         return_sequences=True
-
     )(inputs)
 
+    x = Dropout(0.3)(x)
 
+    x = LSTM(
+        32,
+        return_sequences=True
+    )(x)
 
     attention = Attention()(
-
         [
             x,
             x
         ]
-
     )
-
-
 
     x = GlobalAveragePooling1D()(
-
         attention
-
     )
 
-
-
     x = Dropout(
-        0.4
+        0.3
     )(x)
-
-
 
     x = Dense(
 
-        16,
+        32,
 
         activation="relu"
 

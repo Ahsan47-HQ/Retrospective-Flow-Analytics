@@ -7,14 +7,21 @@ def build_lstm(input_shape, num_classes):
     model = Sequential([
 
         LSTM(
-            16,
-            input_shape=input_shape
+            64,
+            input_shape=input_shape,
+            return_sequences=True
         ),
 
-        Dropout(0.4),
+        Dropout(0.3),
+
+        LSTM(
+            32
+        ),
+
+        Dropout(0.3),
 
         Dense(
-            8,
+            16,
             activation="relu"
         ),
 
